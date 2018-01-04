@@ -18,7 +18,7 @@ with open(os.path.join(_here, 'ascii2graph', 'version.py')) as f:
 setup(
     name='ascii2graph',
     version=version['__version__'],
-    description=('Show how to structure a Python project.'),
+    description=('Converts ASCII text to a graph (represented as a dictionary).'),
     long_description=long_description,
     author='Radovan Bast',
     author_email='radovan.bast@uit.no',
