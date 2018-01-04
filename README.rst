@@ -49,7 +49,12 @@ This produces the following graph (dictionary):
             (6, 10, 'g'): [(6, 8, 'f'), (4, 10, 'e')],
             (1, 7, 'boo'): [(4, 8, 'd'), (1, 4, 'a')]}
 
-Nodes can be anything that is not "-", "|", "/", or "\".
+Nodes can be anything that is not one of these characters::
+
+  -
+  |
+  /
+  \
 
 
 Suggestions? Corrections? Pull requests?
