@@ -57,6 +57,15 @@ Nodes can be anything that is not one of these characters::
   \
 
 
+But ... why?
+------------
+
+I use it to create SVG graphics for teaching Git DAGs from plain text files
+because it is so easy to change a text file and simply generate a new SVG
+image. This module helps me to obtain a graph representation that I can use
+somewhere else to generate graphics.
+
+
 Suggestions? Corrections? Pull requests?
 ----------------------------------------
 
