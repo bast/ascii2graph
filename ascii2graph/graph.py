@@ -3,6 +3,29 @@ from collections import defaultdict
 from .errors import throw_error
 
 
+def get_angle(c1, c2):
+    assert c1 != c2
+    if c1[0] < c2[0]:
+        if c1[1] < c2[1]:
+            return 135
+        elif c1[1] == c2[1]:
+            return 180
+        elif c1[1] > c2[1]:
+            return 225
+    elif c1[0] == c2[0]:
+        if c1[1] < c2[1]:
+            return 90
+        else:
+            return 270
+    elif c1[0] > c2[0]:
+        if c1[1] < c2[1]:
+            return 45
+        elif c1[1] == c2[1]:
+            return 0
+        elif c1[1] > c2[1]:
+            return 315
+
+
 def get_character(line_number, character_position, text):
     '''
     Returns character in position (line_number, character_position).
@@ -51,28 +74,40 @@ def get_connecting_coordinates(line_number,
         throw_error('character is None in get_connecting_coordinates; weird')
 
     if character == '-':
-        c1 = (line_number, character_position - 1)
-        c2 = (line_number, character_position + 1)
+        c1 = (line_number, character_position - 1, False)  # <-- True/False tells us whether this is an arrowhead
+        c2 = (line_number, character_position + 1, False)
+    elif character == '>':
+        c1 = (line_number, character_position - 1, False)
+        c2 = (line_number, character_position + 1, True)
+    elif character == '<':
+        c1 = (line_number, character_position - 1, True)
+        c2 = (line_number, character_position + 1, False)
     elif character == '/':
-        c1 = (line_number + 1, character_position - 1)
-        c2 = (line_number - 1, character_position + 1)
+        c1 = (line_number + 1, character_position - 1, False)
+        c2 = (line_number - 1, character_position + 1, False)
     elif character == '\\':
-        c1 = (line_number - 1, character_position - 1)
-        c2 = (line_number + 1, character_position + 1)
+        c1 = (line_number - 1, character_position - 1, False)
+        c2 = (line_number + 1, character_position + 1, False)
     elif character == '|':
-        c1 = (line_number - 1, character_position)
-        c2 = (line_number + 1, character_position)
+        c1 = (line_number - 1, character_position, False)
+        c2 = (line_number + 1, character_position, False)
+    elif character == '^':
+        c1 = (line_number - 1, character_position, True)
+        c2 = (line_number + 1, character_position, False)
+    elif character == 'v':
+        c1 = (line_number - 1, character_position, False)
+        c2 = (line_number + 1, character_position, True)
     else:
         throw_error('unexpected character in get_connecting_coordinates: {0}'.format(character))
 
     if follow_coordinate1:
-        if get_character(c1[0], c1[1], text) in ['-', '/', '\\', '|']:
+        if get_character(c1[0], c1[1], text) in ['-', '|', '/', '\\', 'v', '^', '<', '>']:
             c1, _ = get_connecting_coordinates(line_number=c1[0],
                                                character_position=c1[1],
                                                text=text,
                                                follow_coordinate2=False)
     if follow_coordinate2:
-        if get_character(c2[0], c2[1], text) in ['-', '/', '\\', '|']:
+        if get_character(c2[0], c2[1], text) in ['-', '|', '/', '\\', 'v', '^', '<', '>']:
             _, c2 = get_connecting_coordinates(line_number=c2[0],
                                                character_position=c2[1],
                                                text=text,
@@ -85,18 +120,21 @@ def test_get_connecting_coordinates():
     text = r'''
     a-b---eee
        \   \
-     x  c---[d12]
-     |  |
+     x  c<--[d12]
+     |  ^
+     v  |
      x oh
       \|
        o
        |
        b'''
-    assert get_connecting_coordinates(2, 7, text) == ((1, 6), (3, 8))
-    assert get_connecting_coordinates(1, 7, text) == ((1, 6), (1, 10))
-    assert get_connecting_coordinates(1, 8, text) == ((1, 6), (1, 10))
-    assert get_connecting_coordinates(1, 9, text) == ((1, 6), (1, 10))
-    assert get_connecting_coordinates(3, 10, text) == ((3, 8), (3, 12))
+    assert get_connecting_coordinates(2, 7, text) == ((1, 6, False), (3, 8, False))
+    assert get_connecting_coordinates(1, 7, text) == ((1, 6, False), (1, 10, False))
+    assert get_connecting_coordinates(1, 8, text) == ((1, 6, False), (1, 10, False))
+    assert get_connecting_coordinates(1, 9, text) == ((1, 6, False), (1, 10, False))
+    assert get_connecting_coordinates(3, 10, text) == ((3, 8, True), (3, 12, False))
+    assert get_connecting_coordinates(4, 5, text) == ((3, 5, False), (6, 5, True))
+    assert get_connecting_coordinates(4, 8, text) == ((3, 8, True), (6, 8, False))
 
 
 def locate_all_words(text):
@@ -117,8 +155,8 @@ def locate_all_words(text):
     words = {}
 
     offset = 0
-    # we find everything that is not - = / \ |
-    for word in re.findall(r'[^-/\|\\\s+]+', text):
+    # we find everything that is not - | / \ v ^ < >
+    for word in re.findall(r'[^-|/\\v\^\<\>\s+]+', text):
         # we found the word
         i = text_one_line.index(word)
 
@@ -139,8 +177,9 @@ def test_locate_all_words():
     text = r'''
     a-b---eee
        \   \
-     x  c---[d12]
-     |  |
+     x  c<--[d12]
+     |  ^
+     v  |
      x oh
       \|
        o
@@ -158,11 +197,11 @@ def test_locate_all_words():
                                       (3, 14): (3, 12, '[d12]'),
                                       (3, 15): (3, 12, '[d12]'),
                                       (3, 16): (3, 12, '[d12]'),
-                                      (5, 5): (5, 5, 'x'),
-                                      (5, 7): (5, 7, 'oh'),
-                                      (5, 8): (5, 7, 'oh'),
-                                      (7, 7): (7, 7, 'o'),
-                                      (9, 7): (9, 7, 'b')}
+                                      (6, 5): (6, 5, 'x'),
+                                      (6, 7): (6, 7, 'oh'),
+                                      (6, 8): (6, 7, 'oh'),
+                                      (8, 7): (8, 7, 'o'),
+                                      (10, 7): (10, 7, 'b')}
 
 
 def graph(text):
@@ -184,10 +223,30 @@ def graph(text):
 
     graph = defaultdict(list)
     for (s, e) in coordinate_tuples:
-        if not words[e] in graph[words[s]]:
-            graph[words[s]].append(words[e])
-        if not words[s] in graph[words[e]]:
-            graph[words[e]].append(words[s])
+        _s = (s[0], s[1])
+        _e = (e[0], e[1])
+        # <-->
+        if s[2] and e[2]:
+            es, se = True, True
+        # --->
+        if (not s[2]) and e[2]:
+            es, se = False, True
+        # <---
+        if s[2] and (not e[2]):
+            es, se = True, False
+        # ----
+        if (not s[2]) and (not e[2]):
+            es, se = True, True
+        if se:
+            angle = get_angle(_s, _e)
+            k, v = words[_s], (words[_e][0], words[_e][1], words[_e][2], angle)
+            if v not in graph[k]:
+                graph[k].append(v)
+        if es:
+            angle = get_angle(_e, _s)
+            k, v = words[_e], (words[_s][0], words[_s][1], words[_s][2], angle)
+            if v not in graph[k]:
+                graph[k].append(v)
     return graph
 
 
@@ -195,42 +254,43 @@ def test_graph():
     text = r'''
     a-b---eee
        \   \
-     x  c---[d12]
-     |  |
+     x  c<--[d12]
+     |  ^
+     v  |
      x oh
       \|
        o
        |
        b'''
-    reference = {(3, 8, 'c'): [(3, 12, '[d12]'), (5, 7, 'oh'), (1, 6, 'b')],
-                 (3, 12, '[d12]'): [(3, 8, 'c'), (1, 10, 'eee')],
-                 (1, 6, 'b'): [(1, 10, 'eee'), (1, 4, 'a'), (3, 8, 'c')],
-                 (1, 10, 'eee'): [(1, 6, 'b'), (3, 12, '[d12]')],
-                 (5, 7, 'oh'): [(3, 8, 'c'), (7, 7, 'o')],
-                 (7, 7, 'o'): [(5, 7, 'oh'), (5, 5, 'x'), (9, 7, 'b')],
-                 (3, 5, 'x'): [(5, 5, 'x')],
-                 (5, 5, 'x'): [(3, 5, 'x'), (7, 7, 'o')],
-                 (1, 4, 'a'): [(1, 6, 'b')],
-                 (9, 7, 'b'): [(7, 7, 'o')]}
+    reference = {(3, 8, 'c'): [(1, 6, 'b', 315)],
+                 (3, 12, '[d12]'): [(3, 8, 'c', 270), (1, 10, 'eee', 315)],
+                 (1, 6, 'b'): [(1, 10, 'eee', 90), (1, 4, 'a', 270), (3, 8, 'c', 135)],
+                 (1, 10, 'eee'): [(1, 6, 'b', 270), (3, 12, '[d12]', 135)],
+                 (6, 7, 'oh'): [(3, 8, 'c', 0), (8, 7, 'o', 180)],
+                 (8, 7, 'o'): [(6, 7, 'oh', 0), (6, 5, 'x', 315), (10, 7, 'b', 180)],
+                 (3, 5, 'x'): [(6, 5, 'x', 180)],
+                 (6, 5, 'x'): [(8, 7, 'o', 135)],
+                 (1, 4, 'a'): [(1, 6, 'b', 90)],
+                 (10, 7, 'b'): [(8, 7, 'o', 0)]}
     result = graph(text)
     for node in result:
         assert set(result[node]) == set(reference[node])
 
     text = r'''
-    a--boo
-    |   |   x
-    |   |  /
-    c---d-e
+    a->boo
+    ^   |   x
+    |   v  /
+    c<--d-e
         | |
         f-g'''
-    reference = {(1, 4, 'a'): [(4, 4, 'c'), (1, 7, 'boo')],
-                 (4, 4, 'c'): [(1, 4, 'a'), (4, 8, 'd')],
-                 (4, 8, 'd'): [(4, 4, 'c'), (4, 10, 'e'), (1, 7, 'boo'), (6, 8, 'f')],
-                 (4, 10, 'e'): [(2, 12, 'x'), (4, 8, 'd'), (6, 10, 'g')],
-                 (2, 12, 'x'): [(4, 10, 'e')],
-                 (6, 8, 'f'): [(6, 10, 'g'), (4, 8, 'd')],
-                 (6, 10, 'g'): [(6, 8, 'f'), (4, 10, 'e')],
-                 (1, 7, 'boo'): [(4, 8, 'd'), (1, 4, 'a')]}
+    reference = {(1, 4, 'a'): [(1, 7, 'boo', 90)],
+                 (4, 4, 'c'): [(1, 4, 'a', 0)],
+                 (4, 8, 'd'): [(4, 4, 'c', 270), (4, 10, 'e', 90), (6, 8, 'f', 180)],
+                 (4, 10, 'e'): [(2, 12, 'x', 45), (4, 8, 'd', 270), (6, 10, 'g', 180)],
+                 (2, 12, 'x'): [(4, 10, 'e', 225)],
+                 (6, 8, 'f'): [(6, 10, 'g', 90), (4, 8, 'd', 0)],
+                 (6, 10, 'g'): [(6, 8, 'f', 270), (4, 10, 'e', 0)],
+                 (1, 7, 'boo'): [(4, 8, 'd', 180)]}
     result = graph(text)
     for node in result:
         assert set(result[node]) == set(reference[node])
