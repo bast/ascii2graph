@@ -172,7 +172,7 @@ def locate_all_words(text):
             character_positions.append(i)
 
     # find words like [origin/foo]
-    words_with_slash = re.findall(r'\[.+\]', text)
+    words_with_slash = re.findall(r'\[.*?\]', text)
 
     # remove these from the text so that we don't find "[origin" and "foo]" in the next step
     # when we remove these, we replace them by spaces to keep the spacing
@@ -231,7 +231,7 @@ def graph(text):
 
     # clean up text: remove words like [origin/foo]
     _text = text
-    for word in re.findall(r'\[.+\]', text):
+    for word in re.findall(r'\[.*?\]', text):
         _text = _text.replace(word, len(word) * ' ')
 
     coordinate_tuples = []
@@ -304,7 +304,7 @@ def test_graph():
 
     text = r'''
     a->boo
-    ^   |  [origin/foo]
+    ^   |  [origin/foo]---[moo]
     |   v  /
     c<--d-e
         | |
@@ -313,7 +313,8 @@ def test_graph():
                  (4, 4, 'c'): [(1, 4, 'a', 0)],
                  (4, 8, 'd'): [(4, 4, 'c', 270), (4, 10, 'e', 90), (6, 8, 'f', 180)],
                  (4, 10, 'e'): [(2, 11, '[origin/foo]', 45), (4, 8, 'd', 270), (6, 10, 'g', 180)],
-                 (2, 11, '[origin/foo]'): [(4, 10, 'e', 225)],
+                 (2, 11, '[origin/foo]'): [(4, 10, 'e', 225), (2, 26, '[moo]', 90)],
+                 (2, 26, '[moo]'): [(2, 11, '[origin/foo]', 270)],
                  (6, 8, 'f'): [(6, 10, 'g', 90), (4, 8, 'd', 0)],
                  (6, 10, 'g'): [(6, 8, 'f', 270), (4, 10, 'e', 0)],
                  (1, 7, 'boo'): [(4, 8, 'd', 180)]}
