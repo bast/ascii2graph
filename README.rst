@@ -54,6 +54,10 @@ Nodes can be anything that is not one of these characters::
 
   - | / \ v ^ < >
 
+There is one exception (sorry!): If "/" is part of `[sometext/foo]`, then it is not interpreted
+as an edge. The reason is that I needed this to visualize Git branches and Git history where I needed
+`[origin/somebranch]`.
+
 
 But ... why?
 ------------

@@ -137,6 +137,27 @@ def test_get_connecting_coordinates():
     assert get_connecting_coordinates(4, 8, text) == ((3, 8, True), (6, 8, False))
 
 
+def map_coordinates(mapping,
+                    list_of_words,
+                    text,
+                    line_numbers,
+                    character_positions):
+    offset = 0
+    text_one_line = ''.join(text.split('\n'))
+    for word in list_of_words:
+        # we found the word
+        i = text_one_line.index(word)
+        # create dictionary entries mapping coordinates to the word
+        for j, _ in enumerate(word):
+            mapping[(line_numbers[offset + i], character_positions[offset + i + j])] = (line_numbers[offset + i],
+                                                                                        character_positions[offset + i],
+                                                                                        word)
+        # we discard everything up to the word
+        text_one_line = text_one_line[i + len(word):]
+        offset += i + len(word)
+    return mapping
+
+
 def locate_all_words(text):
     # list of line numbers for each character
     line_numbers = []
@@ -150,25 +171,25 @@ def locate_all_words(text):
         for i, _ in enumerate(line):
             character_positions.append(i)
 
-    text_one_line = ''.join(text.split('\n'))
+    # find words like [origin/foo]
+    words_with_slash = re.findall(r'\[.+\]', text)
+
+    # remove these from the text so that we don't find "[origin" and "foo]" in the next step
+    # when we remove these, we replace them by spaces to keep the spacing
+    _text = text
+    for word in words_with_slash:
+        _text = _text.replace(word, len(word) * ' ')
+
+    # find everything that is not - | / \ v ^ < >
+    normal_words = re.findall(r'[^-|/\\v\^\<\>\s+]+', _text)
 
     words = {}
-
-    offset = 0
-    # we find everything that is not - | / \ v ^ < >
-    for word in re.findall(r'[^-|/\\v\^\<\>\s+]+', text):
-        # we found the word
-        i = text_one_line.index(word)
-
-        # create dictionary entries mapping coordinates to the word
-        for j, _ in enumerate(word):
-            words[(line_numbers[offset + i], character_positions[offset + i + j])] = (line_numbers[offset + i],
-                                                                                      character_positions[offset + i],
-                                                                                      word)
-
-        # we discard everything up to the word
-        text_one_line = text_one_line[i + len(word):]
-        offset += i + len(word)
+    for list_of_words in [words_with_slash, normal_words]:
+        words = map_coordinates(mapping=words,
+                                list_of_words=list_of_words,
+                                text=text,
+                                line_numbers=line_numbers,
+                                character_positions=character_positions)
 
     return words
 
@@ -208,8 +229,13 @@ def graph(text):
 
     words = locate_all_words(text)
 
+    # clean up text: remove words like [origin/foo]
+    _text = text
+    for word in re.findall(r'\[.+\]', text):
+        _text = _text.replace(word, len(word) * ' ')
+
     coordinate_tuples = []
-    lines = text.split('\n')
+    lines = _text.split('\n')
     for line_number, line in enumerate(lines):
         for character_position, _ in enumerate(line):
             if lines[line_number][character_position] in ['-', '/', '\\', '|']:
@@ -278,7 +304,7 @@ def test_graph():
 
     text = r'''
     a->boo
-    ^   |   x
+    ^   |  [origin/foo]
     |   v  /
     c<--d-e
         | |
@@ -286,8 +312,8 @@ def test_graph():
     reference = {(1, 4, 'a'): [(1, 7, 'boo', 90)],
                  (4, 4, 'c'): [(1, 4, 'a', 0)],
                  (4, 8, 'd'): [(4, 4, 'c', 270), (4, 10, 'e', 90), (6, 8, 'f', 180)],
-                 (4, 10, 'e'): [(2, 12, 'x', 45), (4, 8, 'd', 270), (6, 10, 'g', 180)],
-                 (2, 12, 'x'): [(4, 10, 'e', 225)],
+                 (4, 10, 'e'): [(2, 11, '[origin/foo]', 45), (4, 8, 'd', 270), (6, 10, 'g', 180)],
+                 (2, 11, '[origin/foo]'): [(4, 10, 'e', 225)],
                  (6, 8, 'f'): [(6, 10, 'g', 90), (4, 8, 'd', 0)],
                  (6, 10, 'g'): [(6, 8, 'f', 270), (4, 10, 'e', 0)],
                  (1, 7, 'boo'): [(4, 8, 'd', 180)]}
