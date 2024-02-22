@@ -1,2 +1,4 @@
 pytest
-pycodestyle
+flit
+vulture
+ascii2graph
