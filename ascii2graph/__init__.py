@@ -1,7 +1,9 @@
-from .version import version_info, __version__
+"""
+Converts ASCII text to a graph (represented as a dictionary of connections and
+angles). It can represent directed and undirected graphs.
+"""
+
+
 from .graph import graph
 
-__all__ = [
-    "version_info",
-    "graph",
-]
+__version__ = "0.3.1"
