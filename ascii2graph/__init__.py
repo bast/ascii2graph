@@ -6,4 +6,4 @@ angles). It can represent directed and undirected graphs.
 
 from .graph import graph
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
